@@ -20,7 +20,7 @@ export version="0.1"
 ##################################
 # Load Global Configuration
 ##################################
-source slackbootstrap.conf
+source /etc/slackbootstrap.conf
 
 ##################################
 # Core Functions
