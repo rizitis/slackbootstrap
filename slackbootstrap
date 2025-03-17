@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+#####################################################################
+# Author : Jefferson Carneiro <slackjeff@slackjeff.com.br>
+# License: GPLv2
+#
+# DESC   :
+# Easily create Slackware jails for testing and development from
+# SlackBuilds for 64-bit Stable and Current. Inspired by
+# debootstrap.
+#
+#####################################################################
+set -e
+
+##################################
+# VARS
+##################################
+export prg="slackbootstrap"
+export version="0.1"
+
+##################################
+# Load Global Configuration
+##################################
+source slackbootstrap.conf
+
+##################################
+# Core Functions
+##################################
+function msg() {
+    local msgArg="$*"
+    echo -e "\e[32;1m${msgArg}\e[m"
+    return 0
+}
+
+function die() {
+    local dieArg="$*"
+    echo -e "❌ \e[31;1m${dieArg}\e[m"
+    exit 1
+}
+
+function USAGE() {
+    cat <<EOF
+$prg - $version
+Usage: $prg [option]
+  --create|-c    create/generate a jail, downloading all packages from
+                 the official Slackware repository. This option requires internet.
+  --chroot|-ch   After generating the jail you can always use this option to chroot
+                 into the generated jail.
+  --backup|-bkp  Backup your jail for later use.
+  --help|-h      See this help.
+
+Files:
+  /etc/slackbootstrap.conf   Global configuration file.
+EOF
+    exit 0
+}
+
+function CREATE_JAIL() {
+    # Connection Internet Check.
+    if ! ping -c 1 www.slackware.com &>/dev/null; then
+        die "This option requires an internet connection."
+    fi
+
+    # sync all required packages to create jail.
+    msg "🧲 Sync Packages on your machine. This process may take some time."
+    rsync -havP                      \
+        --no-motd                    \
+        --delete --delete-after      \
+        --no-o --no-g --safe-links   \
+        --timeout=60 --contimeout=30 \
+        --exclude "slackware64/e/"      \
+        --exclude "slackware64/f/"      \
+        --exclude "slackware64/k/"      \
+        --exclude "slackware64/kde/"    \
+        --exclude "slackware64/xfce/"   \
+        --exclude "slackware64/y/"      \
+        "${URL}/slackware64" "$BOOTSTRAP_DOWNLOAD_DIR"
+
+    # Ask to user if chroot dir correctly.
+    # Just dont have any problems.
+    msg "Install packages in Jail: [${CHROOT}]? [y/N] "
+    read -r -n 1 ask
+    ask=${ask,,} # lowercase
+    [ "$ask" != 'y' ] && exit 0
+
+    # Install packages.
+    msg "📦 Start Install packages on jail."
+    sleep 2s
+    cd "${BOOTSTRAP_DOWNLOAD_DIR}/slackware64"
+    installpkg --terse --root "${CHROOT}" ./*/*.t?z || die "There was an error installing packages."
+
+    # Copy and create essential files like (resolv.conf, fstab, etc...)
+    msg "📝 Creating and copying essential files to the jail."
+    if [ -e "/etc/resolv.conf" ]; then
+        cp -v /etc/resolv.conf "${CHROOT}/etc"
+    else
+        die "Unable to copy the /etc/resolv.conf file on your machine. The file does not exist."
+    fi
+
+    # populate fstab into chroot.
+    cat <<EOF > "${CHROOT}/etc/fstab"
+    # <file system> <mount point>   <type>  <options>       <dump>  <pass>
+    tmpfs           /dev/shm        tmpfs    defaults        0      0
+    devpts          /dev/pts        devpts   noexec,nosuid,gid=tty,mode=0620  0      0
+    sysfs           /sys            sysfs    defaults        0      0
+    proc            /proc           proc     defaults        0      0
+EOF
+
+    # Create differential Prompt.
+    echo "export PS1='[Jail Slackware] \u:\e '" >> "${CHROOT}/etc/profile"
+
+    # Update ca-certificates.
+    # Its necessary to use (slackpkg, wget etc...) into chroot.
+    echo "update-ca-certificates" | chroot "${CHROOT}" /bin/bash
+
+    # Remove bootstrap dir.
+    rm -rv "$BOOTSTRAP_DOWNLOAD_DIR"
+}
+
+function ENTER_JAIL() {
+    # Check if chroot dir exist.
+    if ! [  -d "${CHROOT}" ]; then
+        die "[${CHROOT}] does not exist or is not populated. See --help"
+    fi
+
+    # mount Especial devices
+    msg "🔩 Mount special devices. (proc, dev, sys)"
+    mount -t proc proc "${CHROOT}/proc"
+    mount --bind /dev "${CHROOT}/dev"
+    mount --bind /sys "${CHROOT}/sys"
+
+    # Go chroot
+    chroot "${CHROOT}" /usr/bin/env /bin/bash --login
+}
+
+function BACKUP() {
+    local backup_file_name="jail-slackware.tar.bz2"
+    # First, let's unmount the special files.
+
+    # Create backup
+    msg "💾 Let's start your backup of your jail."
+    echo "Storage Directory: /${backup_file_name}"
+    echo "Backup: ${CHROOT}"
+    unset ask
+    read -r -n 1 -p "Correct information? [y/n] " ask
+    ask=${ask,,} # lower
+    [ "$ask" != y ] && exit 0
+    tar -cvjf "/${backup_file_name}" \
+        --exclude='*/proc/*' \
+        --exclude='*/sys/*' \
+        --exclude='*/dev/*' \
+        "/${CHROOT}"
+}
+
+##################################
+# Tests
+##################################
+
+# Root?
+[ "$UID" -ne '0' ] && die "Need root."
+
+# Jail dir exist?
+[ ! -d "$CHROOT" ] && mkdir "${CHROOT}"
+
+# Check if important variables are null.
+if [ -z "$CHROOT" ]; then
+    die "var CHROOT null. Check it."
+elif [ -z "$BOOTSTRAP_DOWNLOAD_DIR" ]; then
+    die "var BOOTSTRAP_DOWNLOAD_DIR null. Check it."
+elif [ -z "$URL" ]; then
+    die "var URL null. Check it."
+fi
+
+# Check if the url is in standards with rsync.
+if ! echo "$URL" | grep -q '^\brsync://\b'; then
+    echo "---> Selected Mirror: $URL"
+    die "I only accept urls starting with rsync://"
+fi
+
+##################################
+# Start here
+##################################
+[ "$#" -eq 0 ] && { echo "See --help"; exit 1 ;}
+case "$1" in
+    --create|-c) CREATE_JAIL ;;
+    --chroot|-ch) ENTER_JAIL ;;
+    --backup|-bkp) BACKUP    ;;
+    --help|-h) USAGE ;;
+    *) USAGE ;;
+esac
