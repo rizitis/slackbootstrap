@@ -15,12 +15,12 @@ set -e
 # VARS
 ##################################
 export prg="slackbootstrap"
-export version="0.1"
+export version="0.2"
 
 ##################################
 # Load Global Configuration
 ##################################
-source /etc/slackbootstrap.conf
+source slackbootstrap.conf
 
 ##################################
 # Core Functions
@@ -60,24 +60,27 @@ function CREATE_JAIL() {
         die "This option requires an internet connection."
     fi
 
+    # get only the series that the user passed without (#).
+    for serie in "${SET_SERIES[@]}"; do
+        if [[ $serie == \#* ]]; then
+            serie=${serie#\#} # remove ^#
+            # Increment array with params for rsync.
+            exclude_serie+=(--exclude "slackware64/${serie}/")
+        fi
+    done
     # sync all required packages to create jail.
-    msg "🧲 Sync Packages on your machine. This process may take some time."
+    msg "---> Sync Packages on your machine. This process may take some time."
     rsync -havP                      \
         --no-motd                    \
         --delete --delete-after      \
         --no-o --no-g --safe-links   \
         --timeout=60 --contimeout=30 \
-        --exclude "slackware64/e/"      \
-        --exclude "slackware64/f/"      \
-        --exclude "slackware64/k/"      \
-        --exclude "slackware64/kde/"    \
-        --exclude "slackware64/xfce/"   \
-        --exclude "slackware64/y/"      \
+	"${exclude_serie[@]}"        \
         "${URL}/slackware64" "$BOOTSTRAP_DOWNLOAD_DIR"
 
     # Ask to user if chroot dir correctly.
     # Just dont have any problems.
-    msg "Install packages in Jail: [${CHROOT}]? [y/N] "
+    msg "---> Install packages in Jail: [${CHROOT}]? [y/N] "
     read -r -n 1 ask
     ask=${ask,,} # lowercase
     [ "$ask" != 'y' ] && exit 0
@@ -89,7 +92,7 @@ function CREATE_JAIL() {
     installpkg --terse --root "${CHROOT}" ./*/*.t?z || die "There was an error installing packages."
 
     # Copy and create essential files like (resolv.conf, fstab, etc...)
-    msg "📝 Creating and copying essential files to the jail."
+    msg "---> Creating and copying essential files to the jail."
     if [ -e "/etc/resolv.conf" ]; then
         cp -v /etc/resolv.conf "${CHROOT}/etc"
     else
@@ -113,6 +116,9 @@ EOF
     echo "update-ca-certificates" | chroot "${CHROOT}" /bin/bash
 
     # Remove bootstrap dir.
+    read -p $'\nDo you want to delete the cache of downloaded series? [y/n] ' remove_bootstrap
+    remove_bootstrap={remove_bootstrap,,} #lower
+    [ "$remove_bootstrap" != 'y' ] && return 0
     rm -rv "$BOOTSTRAP_DOWNLOAD_DIR"
 }
 
@@ -173,7 +179,7 @@ fi
 # Check if the url is in standards with rsync.
 if ! echo "$URL" | grep -q '^\brsync://\b'; then
     echo "---> Selected Mirror: $URL"
-    die "I only accept urls starting with rsync://"
+    die "Only accept urls starting with rsync://"
 fi
 
 ##################################
