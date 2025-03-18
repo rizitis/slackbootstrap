@@ -4,10 +4,11 @@
 # License: GPLv2
 #
 # DESC   :
-# Easily create Slackware jails for testing and development from
-# SlackBuilds for 64-bit Stable and Current. Inspired by
+# Easily create chroot Slackware jail for testing and development
+# SlackBuilds. Its for Stable 64 bits and Current. Inspired by
 # debootstrap.
 #
+# Github : https://github.com/slackjeff/slackbootstrap
 #####################################################################
 set -e
 
@@ -20,7 +21,7 @@ export version="0.2"
 ##################################
 # Load Global Configuration
 ##################################
-source slackbootstrap.conf
+source /etc/slackbootstrap.conf
 
 ##################################
 # Core Functions

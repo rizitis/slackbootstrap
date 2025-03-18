@@ -1,0 +1,13 @@
+###### V0.2
+  * Add support to choice series.
+    thks dchmelik
+    https://www.linuxquestions.org/questions/slackware-14/sbo-maintainer-newbie-doubt-4175748711/#post6562070
+  * Add CHANGELOG File
+
+##### V0.1
+
+  * create chroot jail
+  * enter chroot
+  * create backup jail
+  * help
+
