@@ -1,5 +1,5 @@
-Easily create Slackware jails for testing and development from
-SlackBuilds for 64-bit Stable and Current. Inspired by debootstrap.
+Easily create Slackware chroot jail for testing and development SlackBuilds.
+Its for Stable 64 bits and Current. Inspired by debootstrap.
 
 ## Why?
 I use Slackware current, but as a SlackBuilds maintainer, i need to have Slackware stable installed to maintain the scripts in a clean environment.
