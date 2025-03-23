@@ -5,7 +5,7 @@
 #
 # DESC   :
 # Easily create chroot Slackware jail for testing and development
-# SlackBuilds. Its for Stable 64 bits and Current. Inspired by
+# SlackBuilds. Its for Stable 32/64 bits and Current. Inspired by
 # debootstrap.
 #
 # Github : https://github.com/slackjeff/slackbootstrap
@@ -16,7 +16,7 @@ set -e
 # VARS
 ##################################
 export prg="slackbootstrap"
-export version="0.2"
+export version="0.3"
 
 ##################################
 # Load Global Configuration
@@ -66,7 +66,7 @@ function CREATE_JAIL() {
         if [[ $serie == \#* ]]; then
             serie=${serie#\#} # remove ^#
             # Increment array with params for rsync.
-            exclude_serie+=(--exclude "slackware64/${serie}/")
+            exclude_serie+=(--exclude "$ARCH/${serie}/")
         fi
     done
     # sync all required packages to create jail.
@@ -77,7 +77,7 @@ function CREATE_JAIL() {
         --no-o --no-g --safe-links   \
         --timeout=60 --contimeout=30 \
 	"${exclude_serie[@]}"        \
-        "${URL}/slackware64" "$BOOTSTRAP_DOWNLOAD_DIR"
+        "${URL}/$ARCH" "$BOOTSTRAP_DOWNLOAD_DIR"
 
     # Ask to user if chroot dir correctly.
     # Just dont have any problems.
@@ -89,7 +89,7 @@ function CREATE_JAIL() {
     # Install packages.
     msg "📦 Start Install packages on jail."
     sleep 2s
-    cd "${BOOTSTRAP_DOWNLOAD_DIR}/slackware64"
+    cd "${BOOTSTRAP_DOWNLOAD_DIR}/$ARCH"
     installpkg --terse --root "${CHROOT}" ./*/*.t?z || die "There was an error installing packages."
 
     # Copy and create essential files like (resolv.conf, fstab, etc...)
@@ -175,6 +175,15 @@ elif [ -z "$BOOTSTRAP_DOWNLOAD_DIR" ]; then
     die "var BOOTSTRAP_DOWNLOAD_DIR null. Check it."
 elif [ -z "$URL" ]; then
     die "var URL null. Check it."
+fi
+
+# Support ARCH.
+if [ -z "$ARCH" ]; then
+  case "$( uname -m )" in
+    i?86) ARCH=slackware ;;
+    x86_64) ARCH=slackware64 ;;
+    *) die "I can't give support this architecture."
+  esac
 fi
 
 # Check if the url is in standards with rsync.
