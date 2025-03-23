@@ -7,6 +7,16 @@ Using Virtualization is a simple plan, but for compilation and testing it ends u
 So this program does what I need, it creates a jailed environment, completely clean of 64-bit Slackware (Current or Stable).
 
 ## How use?
+```
+  --create|-c    create/generate a jail, downloading all packages from
+                 the official Slackware repository. This option requires internet.
+  --chroot|-ch   After generating the jail you can always use this option to chroot
+                 into the generated jail.
+  --backup|-bkp  Backup your jail for later use.
+  --help|-h      See this help.
+
+```
+
 
 This tool is available on Slackbuilds
 https://slackbuilds.org/repository/15.0/system/slackbootstrap/?search=slackboot
@@ -25,3 +35,6 @@ for 64 bits:
 If your system is 32 bits:
 # cp slackbootstrap32.conf /etc/slackbootstap/slackbootstrap.conf
 ```
+### Why two separate .conf files?
+I decided to keep things as simple and straightforward as possible. In the future I want to work ARM as well. However, I need people who have this architecture to test.
+In addition, it gives fewer possible errors.
