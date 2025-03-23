@@ -38,3 +38,8 @@ If your system is 32 bits:
 ### Why two separate .conf files?
 I decided to keep things as simple and straightforward as possible. In the future I want to work ARM as well. However, I need people who have this architecture to test.
 In addition, it gives fewer possible errors.
+
+### Future implementations
+* Instead of using a slack (internet) mirror, use a local mirror. (contributions would be welcome.)
+* Use rsync arguments in a variable in the .conf file.
+* Currently the directory (patches/) is not sync to create an updated chroot. The user needs to update the system with slackpkg in chroot. (Improve this)
